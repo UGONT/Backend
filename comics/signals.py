@@ -18,9 +18,9 @@ def generate_comic_embedding(sender, instance, **kwargs):
         # Hugging Face puede devolver una lista anidada dependiendo del modelo
         # Extraemos la lista plana de 768 dimensiones
         if isinstance(vector, list) and isinstance(vector[0], list):
-             instance.embedding = vector[0]
+            instance.embedding = vector[0]
         else:
-             instance.embedding = vector
+            instance.embedding = vector
         
         print("Vector generado y asignado con éxito.")
     else:
