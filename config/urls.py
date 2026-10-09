@@ -20,4 +20,5 @@ from django.urls import path,include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/assistant/', include('assistant.urls')), # Conectamos el agente
+    path('api/', include('comics.urls')),
 ]

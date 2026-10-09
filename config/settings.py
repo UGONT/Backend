@@ -63,7 +63,9 @@ MIDDLEWARE = [
 
 # Orígenes permitidos (Cloudflare Pages y localhost)
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    "http://localhost:5173",   # Vite
+    "http://localhost:3000",   # CRA / Next
+    "http://127.0.0.1:5173",
 ]
 
 ROOT_URLCONF = 'config.urls'
