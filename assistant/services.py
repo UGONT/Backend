@@ -1,43 +1,40 @@
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain.agents import create_agent
 from .tools import buscar_comics_similares
 
-# 1. Inicializamos tu modelo Lite
+# 1. Inicializamos tu modelo
 llm = ChatGoogleGenerativeAI(
     model="gemini-3.1-flash-lite",
     temperature=0.7,
 )
 
-# 2. Definimos la lista de herramientas disponibles
+# 2. Herramientas disponibles
 tools = [buscar_comics_similares]
 
-# 3. Actualizamos el Prompt para soportar herramientas
+# 3. Instrucciones del Sistema
 system_prompt = """
 Eres un asistente experto en cómics independientes. Tu objetivo es ayudar a los lectores a descubrir nuevas historias en nuestra plataforma.
-SIEMPRE que te pregunten por cómics, usa la herramienta de búsqueda en la base de datos antes de responder. Nunca inventes títulos.
+SIEMPRE que te pregunten por cómics, recomendaciones o géneros, usa la herramienta de búsqueda en la base de datos antes de responder. Nunca inventes títulos.
 Responde de forma concisa y amigable.
 """
 
-prompt_template = ChatPromptTemplate.from_messages([
-    ("system", system_prompt),
-    ("human", "{input}"),
-    # Este placeholder es obligatorio: es la "memoria de trabajo" donde 
-    # el agente anota los resultados de las herramientas antes de responder.
-    ("placeholder", "{agent_scratchpad}"), 
-])
-
-# 4. Creamos el agente y su ejecutor
-agent = create_tool_calling_agent(llm, tools, prompt_template)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+# 4. Agente moderno (se encarga del bucle ReAct automáticamente)
+agent = create_agent(
+    model=llm,
+    tools=tools,
+    system_prompt=system_prompt,
+)
 
 def get_agent_response(user_message: str) -> str:
     """Envía el mensaje al agente y retorna la respuesta final."""
     try:
-        # AgentExecutor usa 'input' como variable por defecto
-        respuesta = agent_executor.invoke({"input": user_message})
-        return respuesta["output"]
+        # El agente moderno recibe el historial como una lista de mensajes
+        result = agent.invoke({
+            "messages": [("user", user_message)]
+        })
+        # El último mensaje de la conversación contiene la respuesta redactada
+        return result["messages"][-1].content
     except Exception as e:
         print(f"Error en el agente IA: {e}")
         return "Lo siento, tuve un problema interno al buscar en el catálogo."

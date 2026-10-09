@@ -25,6 +25,6 @@ def buscar_comics_similares(query: str) -> str:
     # 3. Formateamos los datos puros en texto para que el LLM los procese
     respuesta = "Cómics encontrados en la base de datos:\n"
     for comic in resultados:
-        respuesta += f"- Título: {comic.title} | Autor: {comic.author} | Sinopsis: {comic.synopsis} | Meta: ${comic.funding_goal} | Recaudado: ${comic.current_funding}\n"
+        respuesta += f"- Título: {comic.titulo} | Autor: {comic.autor} | Sinopsis: {comic.sinopsis} | Meta: ${comic.meta_recaudacion} | Recaudado: ${comic.recaudacion_actual}\n"
     
     return respuesta

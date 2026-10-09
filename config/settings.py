@@ -101,6 +101,23 @@ DATABASES = {
 }
 
 
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+
+SUPABASE_MEDIA_BUCKET = os.environ.get('DB_BUCKET')
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django_supabase_storage.SupabaseMediaStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_MEDIA_BUCKET}/'
+
+
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 

@@ -6,11 +6,11 @@ from .services import get_embedding
 @receiver(pre_save, sender=Comic)
 def generate_comic_embedding(sender, instance, **kwargs):
     # 1. Armamos un bloque de texto rico en contexto para la IA
-    texto_contexto = f"Título: {instance.title}. Estilo: {instance.style_tags}. Sinopsis: {instance.synopsis}"
+    texto_contexto = f"Título: {instance.titulo}. Estilo: {instance.etiquetas_estilo}. Sinopsis: {instance.sinopsis}"
     
     # 2. Solo llamamos a la API si el cómic es nuevo o si se modificó algún texto importante.
     # (Para simplificar en este MVP, lo generaremos siempre que se presione "Guardar")
-    print(f"Generando embedding para: {instance.title}...")
+    print(f"Generando embedding para: {instance.titulo}...")
     
     vector = get_embedding(texto_contexto)
     
