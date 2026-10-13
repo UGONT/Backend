@@ -19,4 +19,4 @@ class ChatAgentView(APIView):
         ai_response = get_agent_response(user_message)
         
         return Response({"response": ai_response}, status=status.HTTP_200_OK)
-# Create your views here.
+

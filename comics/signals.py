@@ -1,27 +1,25 @@
+# comics/signals.py
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from .models import Comic
-from .services import get_embedding
+from .services import get_embedding_document
+
 
 @receiver(pre_save, sender=Comic)
 def generate_comic_embedding(sender, instance, **kwargs):
-    # 1. Armamos un bloque de texto rico en contexto para la IA
-    texto_contexto = f"Título: {instance.titulo}. Estilo: {instance.etiquetas_estilo}. Sinopsis: {instance.sinopsis}"
-    
-    # 2. Solo llamamos a la API si el cómic es nuevo o si se modificó algún texto importante.
-    # (Para simplificar en este MVP, lo generaremos siempre que se presione "Guardar")
+    texto_contexto = (
+        f"Título: {instance.titulo}. "
+        f"Autor: {instance.autor or 'Desconocido'}. "
+        f"Estilo: {instance.etiquetas_estilo or 'No especificado'}. "
+        f"Sinopsis: {instance.sinopsis or 'Sin sinopsis disponible'}"
+    )
+
     print(f"Generando embedding para: {instance.titulo}...")
-    
-    vector = get_embedding(texto_contexto)
-    
+
+    vector = get_embedding_document(texto_contexto)
+
     if vector:
-        # Hugging Face puede devolver una lista anidada dependiendo del modelo
-        # Extraemos la lista plana de 768 dimensiones
-        if isinstance(vector, list) and isinstance(vector[0], list):
-            instance.embedding = vector[0]
-        else:
-            instance.embedding = vector
-        
-        print("Vector generado y asignado con éxito.")
+        instance.embedding = vector
+        print(f"Embedding generado con éxito ({len(vector)} dimensiones).")
     else:
-        print("Fallo al generar el vector. Se guardará como NULL.")
+        print("Fallo al generar el embedding. Se guardará como NULL.")

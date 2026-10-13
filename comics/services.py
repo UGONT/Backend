@@ -1,29 +1,51 @@
+# comics/services.py
 import os
-import json
-from huggingface_hub import InferenceClient
+from functools import lru_cache
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-import requests
 
-def get_embedding(text):
-    token = os.getenv("HF_TOKEN")
-    # Inicializamos el cliente oficial
-    client = InferenceClient(token=token)
-    
+# Dimensiones fijas para que coincidan con VectorField(dimensions=768)
+EMBEDDING_DIMENSIONS = 768
+
+
+@lru_cache(maxsize=1)
+def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
+    """
+    Crea el modelo de embeddings una sola vez.
+    lru_cache evita instanciarlo en cada request.
+    """
+    return GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-001",
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        output_dimensionality=EMBEDDING_DIMENSIONS,
+    )
+
+
+def get_embedding_document(text: str) -> list[float] | None:
+    """
+    Genera el embedding de un cómic (documento a indexar).
+    Usa task_type RETRIEVAL_DOCUMENT para optimizar la búsqueda.
+    """
     try:
-        # Usamos el modelo e5-base que genera exactamente 768 dimensiones
-        # Y recordamos el prefijo "passage: " que requiere este modelo en particular
-        resultado = client.feature_extraction(
-            f"passage: {text}",
-            model="intfloat/multilingual-e5-base"
-        )
-        
-        # El cliente devuelve un numpy array (ej. de tamaño [1, 768])
-        # Lo aplanamos (.flatten) y lo pasamos a lista nativa de Python (.tolist())
-        # que es el formato exacto que pgvector necesita para guardar en la base de datos
-        vector_lista = resultado.flatten().tolist()
-        
-        return vector_lista
-
+        model = get_embedding_model()
+        # embed_documents usa RETRIEVAL_DOCUMENT internamente
+        vector = model.embed_documents([text])[0]
+        return vector if vector else None
     except Exception as e:
-        print(f"Error generando vector con InferenceClient: {e}")
+        print(f"Error generando embedding de documento: {e}")
+        return None
+
+
+def get_embedding_query(text: str) -> list[float] | None:
+    """
+    Genera el embedding de una consulta de usuario.
+    Usa task_type RETRIEVAL_QUERY para optimizar la búsqueda.
+    """
+    try:
+        model = get_embedding_model()
+        # embed_query usa RETRIEVAL_QUERY internamente
+        vector = model.embed_query(text)
+        return vector if vector else None
+    except Exception as e:
+        print(f"Error generando embedding de consulta: {e}")
         return None
