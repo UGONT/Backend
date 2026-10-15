@@ -1,3 +1,4 @@
+# comics/apps.py
 from django.apps import AppConfig
 
 
@@ -6,5 +7,4 @@ class ComicsConfig(AppConfig):
     name = 'comics'
 
     def ready(self):
-        # Importamos las señales cuando Django arranca
-        import comics.signals
+        import comics.signals  # noqa: F401

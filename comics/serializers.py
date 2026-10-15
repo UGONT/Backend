@@ -1,16 +1,35 @@
 # comics/serializers.py
 from rest_framework import serializers
-from .models import Comic
+from .models import Comic, ComicAutor, Etiqueta
+
+
+class AutorSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='autor.username', read_only=True)
+    nickname = serializers.SerializerMethodField()
+    rol_display = serializers.CharField(source='get_rol_display', read_only=True)
+
+    class Meta:
+        model = ComicAutor
+        fields = ['username', 'nickname', 'rol', 'rol_display', 'orden']
+
+    def get_nickname(self, obj):
+        if hasattr(obj.autor, 'perfil'):
+            return obj.autor.perfil.nickname
+        return obj.autor.username
 
 
 class ComicSerializer(serializers.ModelSerializer):
-    # Campos renombrados para que coincidan con el frontend
+    # Compatibilidad con el frontend actual
     descripcion = serializers.CharField(source='sinopsis')
-    generos = serializers.SerializerMethodField()
     img = serializers.ImageField(source='portada', read_only=True)
     recaudado = serializers.IntegerField(source='recaudacion_actual')
     meta = serializers.IntegerField(source='meta_recaudacion')
-    #autor_nickname = serializers.SerializerMethodField()
+
+    # Autores y etiquetas
+    autores = AutorSerializer(many=True, read_only=True)
+    etiquetas = serializers.SerializerMethodField()      # 👈 CAMBIA
+    autor = serializers.SerializerMethodField()
+    generos = serializers.SerializerMethodField()
 
     class Meta:
         model = Comic
@@ -18,22 +37,41 @@ class ComicSerializer(serializers.ModelSerializer):
             'id',
             'titulo',
             'autor',
-            #'autor_nickname',# o usa autor_nickname si el autor real es el publicador
+            'autores',
             'generos',
+            'etiquetas',
             'descripcion',
             'img',
             'recaudado',
             'meta',
-            #'publicador',
+            'valoracion_promedio',
+            'total_valoraciones',
+            'estado',
+            'crowdfunding_activo',
+            'numero_paginas',
+            'fecha_inicio',
+            'fecha_fin',
         ]
 
+    def get_autor(self, obj):
+        autores = obj.autores.select_related('autor').all()
+        if not autores:
+            return 'Anónimo'
+        return ", ".join(
+            (a.autor.perfil.nickname if hasattr(a.autor, 'perfil') else a.autor.username)
+            for a in autores
+        )
+
     def get_generos(self, obj):
-        # Convierte "Cyberpunk, Acuarela" -> ["Cyberpunk", "Acuarela"]
-        if not obj.etiquetas_estilo:
-            return []
-        return [tag.strip() for tag in obj.etiquetas_estilo.split(',') if tag.strip()]
-    
-    def get_autor_nickname(self, obj):
-        if obj.publicador and hasattr(obj.publicador, 'perfil'):
-            return obj.publicador.perfil.nickname
-        return None
+        return [ce.etiqueta.nombre for ce in obj.etiquetas.select_related('etiqueta').all()]
+
+    def get_etiquetas(self, obj):
+        """Devuelve las etiquetas como objetos {id, nombre, tipo}."""
+        return [
+            {
+                'id': ce.etiqueta.id,
+                'nombre': ce.etiqueta.nombre,
+                'tipo': ce.etiqueta.tipo,
+            }
+            for ce in obj.etiquetas.select_related('etiqueta').all()
+        ]
