@@ -1,6 +1,7 @@
+# assistant/urls.py
 from django.urls import path
-from .views import ChatAgentView
+from .views import chat_view
 
 urlpatterns = [
-    path('chat/', ChatAgentView.as_view(), name='chat_agent'),
+    path('chat/', chat_view, name='assistant-chat'),
 ]

@@ -38,14 +38,11 @@ a descubrir nuevas historias en nuestra plataforma de crowdfunding.
    `buscar_comics_similares`.
 3. Si pide estilo visual, usa `buscar_comics_por_estilo_visual`.
 4. Si pide recomendaciones personalizadas, usa `recomendar_para_mi`.
-5. Si pide datos concretos (autor, género, estado), usa la tool específica.
-6. Si pregunta por un cómic concreto por nombre, usa `obtener_detalle_comic`.
-7. Responde en español, conciso y amigable.
+5. Responde en español, conciso y amigable.
 """
 
 
 def get_agent_response(user_message: str, user_id: int | None = None) -> str:
-    """Envía el mensaje al agente y retorna la respuesta final."""
     tools = [
         buscar_comics_similares,
         buscar_comics_por_estilo_visual,
@@ -57,7 +54,6 @@ def get_agent_response(user_message: str, user_id: int | None = None) -> str:
         obtener_detalle_comic,
     ]
     
-    # Añadimos el tool personalizado solo si hay usuario logueado
     if user_id:
         tools.append(make_recomendar_para_mi(user_id))
     
@@ -69,7 +65,24 @@ def get_agent_response(user_message: str, user_id: int | None = None) -> str:
     
     try:
         result = agent.invoke({"messages": [("user", user_message)]})
-        return result["messages"][-1].content
+        content = result["messages"][-1].content
+        
+        # Gemini puede devolver string, lista de bloques o dict
+        if isinstance(content, str):
+            return content
+        
+        if isinstance(content, list):
+            # Extraer solo los bloques de tipo "text"
+            partes = []
+            for bloque in content:
+                if isinstance(bloque, dict) and bloque.get("type") == "text":
+                    partes.append(bloque.get("text", ""))
+                elif isinstance(bloque, str):
+                    partes.append(bloque)
+            return "\n".join(partes).strip() or "No pude generar una respuesta."
+        
+        return str(content)
+        
     except Exception as e:
         print(f"Error en el agente IA: {e}")
         return "Lo siento, tuve un problema interno al buscar en el catálogo."
