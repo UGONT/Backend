@@ -4,6 +4,42 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from pgvector.django import VectorField
 
+# =====================================================================
+# CÓMICS EXTERNOS (para "ya leí estos")
+# =====================================================================
+
+class ComicExterno(models.Model):
+    """
+    Cómic conocido (Saga, Akira, Watchmen...) que el usuario puede marcar
+    como leído. Tiene su propio embedding para hacer recomendaciones por
+    similitud contra los cómics de la plataforma.
+    """
+    nombre = models.CharField(max_length=200, unique=True, verbose_name="Nombre")
+    autor = models.CharField(max_length=200, blank=True, verbose_name="Autor")
+    descripcion = models.TextField(
+        verbose_name="Descripción",
+        help_text="Descripción rica en temáticas, géneros y estilo para generar un buen embedding."
+    )
+    embedding = VectorField(
+        dimensions=768,
+        null=True,
+        blank=True,
+        verbose_name="Embedding"
+    )
+    imagen_url = models.URLField(
+        blank=True,
+        verbose_name="URL de imagen",
+        help_text="Opcional: para mostrar la portada en el frontend."
+    )
+    orden = models.PositiveSmallIntegerField(default=0, verbose_name="Orden")
+
+    class Meta:
+        verbose_name = "Cómic externo"
+        verbose_name_plural = "Cómics externos"
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
 
 # =====================================================================
 # PERFIL DE USUARIO
@@ -32,6 +68,20 @@ class Perfil(models.Model):
         verbose_name="Avatar"
     )
     fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de registro")
+    
+    gustos = models.ManyToManyField(
+        'Etiqueta',          # referencia por string para evitar problemas de orden
+        blank=True,
+        related_name='perfiles',
+        verbose_name="Gustos",
+        help_text="Géneros, estilos o temas preferidos por el usuario."
+    )
+    comics_leidos = models.ManyToManyField(
+        ComicExterno,
+        blank=True,
+        related_name='lectores',
+        verbose_name="Cómics leídos"
+    )    
 
     class Meta:
         verbose_name = "Perfil"
@@ -379,3 +429,5 @@ class Valoracion(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} → {self.comic.titulo}: {self.puntuacion}/5"
+    
+    

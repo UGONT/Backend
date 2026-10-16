@@ -4,8 +4,10 @@ from langchain_core.tools import tool
 from pgvector.django import CosineDistance
 from django.db.models import Q
 
-from comics.models import Comic, ComicAutor, ComicEtiqueta, Etiqueta, Donacion
+from comics.models import Comic, ComicAutor, ComicEtiqueta, Etiqueta, Donacion, Perfil, ComicExterno
 from comics.services import get_embedding_query
+
+from django.db.models import Avg
 
 
 # =====================================================================
@@ -227,3 +229,78 @@ def obtener_detalle_comic(titulo: str) -> str:
     lineas.append(f"Donaciones completadas: {donaciones}")
 
     return "\n".join(lineas)
+
+
+
+
+def make_recomendar_para_mi(user_id: int):
+    """
+    Crea un tool de recomendación personalizada, atado al user_id actual.
+    Se llama desde la vista en cada request (no al cargar el módulo).
+    """
+    
+    @tool
+    def recomendar_para_mi() -> str:
+        """
+        Recomienda cómics personalizados para el usuario actual basándose en:
+        - Sus gustos declarados (etiquetas preferidas)
+        - Los cómics que ya leyó
+        
+        Úsala cuando el usuario pida recomendaciones personalizadas como
+        "recomiéndame algo", "qué me puede gustar", "algo para mí".
+        """
+        from comics.models import Perfil, Comic
+        
+        try:
+            perfil = Perfil.objects.get(usuario_id=user_id)
+        except Perfil.DoesNotExist:
+            return "El usuario no tiene perfil configurado."
+        
+        gustos = list(perfil.gustos.values_list('nombre', flat=True))
+        leidos = list(perfil.comics_leidos.all())
+        
+        if not gustos and not leidos:
+            return (
+                "El usuario no ha declarado gustos ni cómics leídos. "
+                "Sugiere que los agregue en su perfil o pregúntale qué le gusta."
+            )
+        
+        # Estrategia 1: buscar por similitud a los cómics leídos
+        resultados = []
+        if leidos:
+            vectores = [c.embedding for c in leidos if c.embedding is not None]
+            if vectores:
+                promedio = [
+                    sum(v[i] for v in vectores) / len(vectores)
+                    for i in range(len(vectores[0]))
+                ]
+                resultados = list(
+                    Comic.objects
+                    .exclude(embedding_contenido__isnull=True)
+                    .filter(estado__in=['publicado', 'en_campana'])
+                    .order_by(CosineDistance('embedding_contenido', promedio))[:5]
+                )
+        
+        # Estrategia 2: si no hay leídos o no hay resultados, filtrar por gustos
+        if not resultados and gustos:
+            resultados = list(
+                Comic.objects
+                .filter(etiquetas__etiqueta__nombre__in=gustos)
+                .filter(estado__in=['publicado', 'en_campana'])
+                .distinct()[:5]
+            )
+        
+        if not resultados:
+            return "No encontré cómics que coincidan con los gustos actuales del usuario."
+        
+        contexto = (
+            f"Perfil del usuario: gustos={gustos}, "
+            f"cómics leídos={[c.nombre for c in leidos]}.\n\n"
+            f"Cómics recomendados:\n"
+        )
+        for c in resultados:
+            contexto += f"- {_formatear_comic(c)}\n"
+        
+        return contexto
+    
+    return recomendar_para_mi

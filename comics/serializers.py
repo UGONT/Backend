@@ -1,7 +1,16 @@
 # comics/serializers.py
 from rest_framework import serializers
-from .models import Comic, ComicAutor, Etiqueta
+from .models import Comic, ComicAutor, Etiqueta, ComicExterno
 
+class ComicExternoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComicExterno
+        fields = ['id', 'nombre', 'autor', 'imagen_url']
+
+class EtiquetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Etiqueta
+        fields = ['id', 'nombre', 'tipo']
 
 class AutorSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='autor.username', read_only=True)

@@ -23,6 +23,7 @@ class PerfilInline(admin.StackedInline):
     model = Perfil
     can_delete = False
     verbose_name_plural = "Perfil"
+    fields = ('nickname', 'edad', 'es_creador', 'bio', 'avatar')
 
 
 class UserAdmin(BaseUserAdmin):
@@ -48,6 +49,7 @@ class PerfilAdmin(admin.ModelAdmin):
     list_display = ('nickname', 'usuario', 'es_creador', 'edad', 'fecha_registro')
     list_filter = ('es_creador',)
     search_fields = ('nickname', 'usuario__username', 'usuario__email')
+    filter_horizontal = ('gustos', 'comics_leidos')
 
 
 # =====================================================================
